@@ -1,0 +1,2 @@
+https://golang.org/dl/go1.16.3.linux-amd64.tar.gz
+https://www.python.org/ftp/python/3.11.8/Python-3.11.8.tgz
