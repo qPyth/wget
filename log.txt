@@ -1,0 +1,7 @@
+time=2024-03-15T21:57:05.980+05:00 level=ERROR msg="error while writing to file: invalid argument"
+time=2024-03-15T22:00:15.333+05:00 level=ERROR msg="error while writing to file: invalid argument"
+time=2024-03-15T22:01:07.034+05:00 level=ERROR msg="error while writing to file: invalid argument"
+time=2024-03-15T22:02:22.279+05:00 level=ERROR msg="Get \"\": unsupported protocol scheme \"\""
+time=2024-03-15T22:02:42.875+05:00 level=ERROR msg="Get \"\": unsupported protocol scheme \"\""
+time=2024-03-15T22:03:27.907+05:00 level=ERROR msg="Get \"\": unsupported protocol scheme \"\""
+time=2024-03-15T22:04:15.160+05:00 level=ERROR msg="error while writing to file: invalid argument"

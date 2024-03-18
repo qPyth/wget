@@ -1,98 +1,45 @@
 package main
 
 import (
-	"fmt"
-	"io"
+	"flag"
 	"log"
-	"mime"
-	"net/http"
+	"log/slog"
 	"os"
-	"strings"
-	"time"
+	"wget/cmd/wget"
 )
 
 // Analog wget application
 
-const buffSize = 1024
+const pathToLogFile = "log.txt"
 
 func main() {
-	startTime := time.Now().Format("23 Feb 2021 15:04:05")
-	fmt.Println("Start time: ", startTime)
 
-	url := "https://golang.org/dl/go1.16.3.linux-amd64.tar.gz"
-	err := download(url)
+	logFile, err := os.OpenFile(pathToLogFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
+		log.Fatalf("error opening log file: %s\n", err.Error())
+	}
+	logger := slog.New(slog.NewTextHandler(logFile, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	flags := parseFlags()
+	app := wget.NewWget(logger)
+	err = app.ProcessFlags(flags)
+	if err != nil {
+		logger.Error("process flags error", "error", err.Error())
 		log.Fatal(err.Error())
 	}
+	app.Start()
 }
 
-func download(url string) error {
-	fmt.Printf("Downloading from %s\n", url)
-	fmt.Printf("Sending request, awaiting response... ")
-	resp, err := http.Get(url)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
+func parseFlags() wget.Flags {
+	var flags wget.Flags
 
-	status := resp.StatusCode
-	fmt.Printf("status: %d %s\n", status, http.StatusText(status))
-	contType := resp.Header.Get("Content-Type")
-	fmt.Printf("Content type: %s\n", contType)
-	contLength := resp.ContentLength
-	fmt.Printf("Content length: %dKb\n", contLength/1024.0)
-	extension, err := mime.ExtensionsByType(contType)
-	fmt.Printf("Saving to: /%s\n", getNameFromURL(url))
+	flag.BoolVar(&flags.BgFlag, "B", false, "run in background")
+	flag.StringVar(&flags.RateFlag, "rate-limit", "", "set the rate limit like \"200K or 2M\"")
+	flag.StringVar(&flags.PathFlag, "P", "", "set the path to save the file")
+	flag.StringVar(&flags.NameFlag, "o", "", "set the name of the file")
+	flag.BoolVar(&flags.MirrorFlag, "mirror", false, "mirror the site")
+	flag.BoolVar(&flags.MultiFlag, "i", false, "download multiple files")
+	flag.Parse()
+	flags.URL = flag.Arg(0)
 
-	name := getNameFromURL(url)
-	fileName := fmt.Sprintf("%s%s", name, extension[0])
-
-	file, err := os.Create(fileName)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	var receivedBytes int64
-	startTime := time.Now()
-
-	speedLimit := 1.0
-	buf := make([]byte, buffSize)
-	for {
-		n, err := resp.Body.Read(buf)
-		if err != nil && err != io.EOF {
-			return err
-		}
-		if n == 0 {
-			fmt.Printf("\rФайл %s успешно загружен\n", fileName)
-			break
-		}
-		receivedBytes += int64(n)
-		percent := float64(receivedBytes) / float64(contLength) * 100
-		speed := float64(receivedBytes) / time.Since(startTime).Seconds() / 1024.0 / 1024.0
-		if speed > speedLimit {
-			time.Sleep(100 * time.Millisecond)
-		}
-		fmt.Printf("\rDownloaded %d%% %.2f Mb/s", int(percent), speed)
-	}
-
-	return nil
-}
-
-//
-//func clearTerminal() {
-//	var cmd *exec.Cmd
-//	if runtime.GOOS == "windows" {
-//		cmd = exec.Command("cmd", "/c", "cls")
-//	} else {
-//		cmd = exec.Command("clear")
-//	}
-//	cmd.Stdout = os.Stdout
-//	if err := cmd.Run(); err != nil {
-//		log.Fatal(err)
-//	}
-//}
-
-func getNameFromURL(url string) string {
-	return url[strings.LastIndex(url, "/")+1:]
+	return flags
 }
