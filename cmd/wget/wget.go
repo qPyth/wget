@@ -78,6 +78,9 @@ func (w *Wget) Start() {
 
 	go func() {
 		defer wg.Done()
+		defer close(dlStatus)
+		defer close(dlInfo)
+		defer close(dlErr)
 		w.downloadFile(dlStatus, dlInfo, dlErr)
 	}()
 	go func() {
@@ -126,11 +129,20 @@ func (w *Wget) displayInfo(dlStatus <-chan DownloadStatus, dlInfo <-chan Downloa
 
 	for {
 		select {
-		case status := <-dlStatus:
+		case status, ok := <-dlStatus:
+			if !ok {
+				return
+			}
 			fmt.Printf("%s\n", status.Status)
-		case info := <-dlInfo:
+		case info, ok := <-dlInfo:
+			if !ok {
+				return
+			}
 			printProgressBar(info.CurrentSize, info.TotalSize, info.CurrentSpeed)
-		case err := <-dlErr:
+		case err, ok := <-dlErr:
+			if !ok {
+				return
+			}
 			w.logger.Error(err.Error())
 			return
 		}
