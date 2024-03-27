@@ -1,8 +1,4 @@
-package wget
-
-import (
-	"fmt"
-)
+package types
 
 type DownloadInfo struct {
 	CurrentSpeed float64
@@ -20,16 +16,6 @@ type Flags struct {
 	PathFlag   string
 	NameFlag   string
 	MirrorFlag bool
-	MultiFlag  bool
+	MultiFlag  string
 	URL        string
 }
-
-const (
-	buffSize = 1024
-	OneKB    = 1024
-	OneMB    = 1024 * 1024
-)
-
-var (
-	ErrInvalidRateLimit = fmt.Errorf("error: invalid rate limit format (use 200K or 2M)")
-)
