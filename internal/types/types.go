@@ -17,5 +17,7 @@ type Flags struct {
 	NameFlag   string
 	MirrorFlag bool
 	MultiFlag  string
+	Reject     string
+	Exclude    string
 	URL        string
 }

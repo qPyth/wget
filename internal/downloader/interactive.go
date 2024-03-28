@@ -10,10 +10,11 @@ import (
 )
 
 type Interactive struct {
-	url       string
-	path      string
-	name      string
-	speedRate float64
+	url        string
+	path       string
+	name       string
+	speedRate  float64
+	background bool
 }
 
 func (d *Interactive) Download(flags types.Flags) {
@@ -31,7 +32,7 @@ func (d *Interactive) Download(flags types.Flags) {
 		log.Fatal(err.Error())
 	}
 
-	file, err := os.Create(path.Join(d.path, d.name))
+	file, err := createFile(path.Join(d.path, d.name))
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -40,7 +41,11 @@ func (d *Interactive) Download(flags types.Flags) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	go displayInfo(dlInfo, dlErr, &wg)
+	if d.background {
+		go averageSpeed(dlInfo, dlErr, writer, &wg)
+	} else {
+		go displayInfo(dlInfo, dlErr, &wg)
+	}
 	go func(wg *sync.WaitGroup) {
 		wg.Done()
 		defer close(dlErr)
@@ -55,6 +60,7 @@ func (d *Interactive) Download(flags types.Flags) {
 func (d *Interactive) processFlags(flags types.Flags) error {
 	var err error
 	d.url = flags.URL
+	d.background = flags.BgFlag
 	d.name = flags.NameFlag
 	if flags.NameFlag == "" {
 		d.name = getNameFromURL(flags.URL)

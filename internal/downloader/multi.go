@@ -13,7 +13,6 @@ import (
 type Multi struct {
 	urls      []string
 	path      string
-	name      string
 	speedRate float64
 }
 
@@ -53,7 +52,7 @@ func (d *Multi) asyncDownload(wg *sync.WaitGroup, mu *sync.Mutex, writer io.Writ
 	mu.Unlock()
 
 	name := getNameFromURL(url)
-	file, err := os.Create(path.Join(d.path, name))
+	file, err := createFile(path.Join(d.path, name))
 	defer file.Close()
 	if err != nil {
 		errCh <- err
@@ -72,10 +71,7 @@ func (d *Multi) asyncDownload(wg *sync.WaitGroup, mu *sync.Mutex, writer io.Writ
 func (d *Multi) processFlags(flags types.Flags) error {
 	var err error
 	d.urls, err = parseUrlsFromFiles(flags.MultiFlag)
-	d.name = flags.NameFlag
-	if flags.NameFlag == "" {
-		d.name = getNameFromURL(flags.URL)
-	}
+
 	d.path = flags.PathFlag
 	if flags.PathFlag != "" {
 		if !pathCheck(flags.PathFlag) {

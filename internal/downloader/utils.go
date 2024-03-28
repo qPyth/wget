@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -63,7 +64,16 @@ func printProgressBar(currentSize int64, totalSize int64, currentSpeed float64) 
 }
 
 func createFile(savePath string) (*os.File, error) {
-	return os.OpenFile(savePath, os.O_CREATE|os.O_WRONLY, 0644)
+	if _, err := os.Stat(savePath); !os.IsNotExist(err) {
+		uniqID := time.Now().Format(time.StampMilli)
+		savePath += uniqID
+	}
+
+	file, err := os.Create(savePath)
+	if err != nil {
+		return nil, err
+	}
+	return file, nil
 }
 
 func download(resp *http.Response, dlInfo chan<- types.DownloadInfo, dlErr chan<- error, file *os.File, rateLimit float64) {
@@ -103,7 +113,8 @@ func download(resp *http.Response, dlInfo chan<- types.DownloadInfo, dlErr chan<
 	}
 }
 
-func averageSpeed(dlInfo <-chan types.DownloadInfo, errCh chan<- error, writer io.Writer) {
+func averageSpeed(dlInfo <-chan types.DownloadInfo, errCh chan<- error, writer io.Writer, wg *sync.WaitGroup) {
+	defer wg.Done()
 	var avgSpeed float64
 	var totalSpeed float64
 	var total float64
@@ -112,8 +123,8 @@ func averageSpeed(dlInfo <-chan types.DownloadInfo, errCh chan<- error, writer i
 		total++
 		totalSpeed += info.CurrentSpeed
 	}
-	avgSpeed = totalSpeed / total
-	_, err := writer.Write([]byte(fmt.Sprintf("Average speed: %.02f\n", avgSpeed)))
+	avgSpeed = totalSpeed / total / OneMB
+	_, err := writer.Write([]byte(fmt.Sprintf("Average speed: %.02fMb/s\n", avgSpeed)))
 	if err != nil {
 		errCh <- err
 	}
@@ -144,7 +155,7 @@ func displayInfo(dlInfo <-chan types.DownloadInfo, dlErr <-chan error, wg *sync.
 	}
 }
 
-func sendRequest(url string, path string, writer io.Writer) (*http.Response, error) {
+func sendRequest(url string, pathToSave string, writer io.Writer) (*http.Response, error) {
 	_, err := writer.Write([]byte(fmt.Sprintf("started at %s\n", time.Now().Format("2013-11-14 03:42:06"))))
 	_, err = writer.Write([]byte(fmt.Sprintf("sending request on %s, awainting response...\n", url)))
 	resp, err := http.Get(url)
@@ -156,7 +167,7 @@ func sendRequest(url string, path string, writer io.Writer) (*http.Response, err
 	}
 	_, err = writer.Write([]byte(fmt.Sprintf("Status OK\n")))
 	_, err = writer.Write([]byte(fmt.Sprintf("Content size: ~%dKb\n", resp.ContentLength/1024)))
-	_, err = writer.Write([]byte(fmt.Sprintf("Content saved to path: %s\n", path)))
+	_, err = writer.Write([]byte(fmt.Sprintf("Content saved to path: %s\n", path.Join(pathToSave, getNameFromURL(url)))))
 	return resp, nil
 }
 
@@ -173,4 +184,21 @@ func parseUrlsFromFiles(filePath string) ([]string, error) {
 		return nil, fmt.Errorf("no urls in file")
 	}
 	return urls, nil
+}
+
+func parseArgs(data string) (map[string]struct{}, error) {
+	if data == "" {
+		return nil, nil
+	}
+	rgx := regexp.MustCompile(`^(\s*\w+\s*,)*\s*\w+\s*$`)
+	if !rgx.MatchString(data) {
+		return nil, errors.New("invalid format of reject")
+	}
+	res := make(map[string]struct{})
+	exts := strings.Split(data, ",")
+
+	for _, ext := range exts {
+		res[strings.TrimSpace(ext)] = struct{}{}
+	}
+	return res, nil
 }
